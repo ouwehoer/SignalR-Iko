@@ -1,0 +1,103 @@
+﻿@page "/chat"
+@rendermode InteractiveWebAssembly
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<PageTitle>Chat</PageTitle>
+
+
+@if (!isConnectedToChat)
+{
+    <div class="form-group">
+        <label>
+            Chat Name:
+            <input @bind="chatName" size="20" />
+        </label>
+    </div>
+    <div class="form-group">
+        <label>
+            User Name:
+            <input @bind="userName" size="20" />
+        </label>
+    </div>
+    <button @onclick="ConnectToChat" disabled="@(!IsConnected)">Connect</button>
+}
+else
+{
+<div class="form-group">
+    <label>
+        Message:
+        <input @bind="messageInput" size="50" />
+    </label>
+</div>
+<button @onclick="Send" disabled="@(!IsConnected)">Send</button>
+}
+
+<hr>
+
+@if (isConnectedToChat)
+{
+    <h2>Connected to @chatName</h2>
+}
+
+<ul id="messagesList">
+    @foreach (var message in messages)
+    {
+        <li>@message</li>
+    }
+</ul>
+
+@code {
+    private HubConnection? hubConnection;
+    private List<string> messages = new List<string>();
+    private string? userName;
+    private string? messageInput;
+    private string? chatName;
+    private bool isConnectedToChat = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl("https://localhost:55948/chathub")
+            .Build();
+
+        hubConnection.On<string, string>("ReceiveChat", (user, message) =>
+        {
+            var encodedMsg = $"{user}: {message}";
+            messages.Add(encodedMsg);
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task Send()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendMessage", chatName, userName, messageInput);
+            messageInput = string.Empty;
+        }
+    }
+
+    private async Task ConnectToChat()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("AddToChat", chatName, userName);
+            isConnectedToChat = true;
+        }
+    }
+
+    public bool IsConnected =>
+        hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

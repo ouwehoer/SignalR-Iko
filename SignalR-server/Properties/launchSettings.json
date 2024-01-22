@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "SignalR-server": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:55948;http://localhost:55949"
+    }
+  }
+}
